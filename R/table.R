@@ -151,6 +151,7 @@ kable = function(
   if (format != 'latex' && length(align) && !all(align %in% c('l', 'r', 'c')))
     stop("'align' must be a character vector of possible values 'l', 'r', and 'c'")
   attr(x, 'align') = align
+  # UP TO HERE - do.call needs to correctly use `caption_position`
   res = do.call(
     paste('kable', format, sep = '_'),
     list(x = x, caption = caption, escape = escape,
@@ -331,7 +332,7 @@ kable_latex_caption = function(x, caption, caption_position) {
   }
   if (caption_position == "bottom") {
     paste(c(
-      '\\begin{table}\n', x, sprintf('\\caption{%s}\n', caption), '\n\\end{table}'
+      '\\begin{table}\n', x, sprintf('\n\\caption{%s}\n', caption), '\\end{table}'
     ), collapse = '')
   }
 }
