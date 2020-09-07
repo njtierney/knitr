@@ -43,6 +43,8 @@
 #' @param escape Boolean; whether to escape special characters when producing
 #'   HTML or LaTeX tables. When \code{escape = FALSE}, you have to make sure
 #'   that special characters will not trigger syntax errors in LaTeX or HTML.
+#' @param caption_position Where to place the caption. Either "top" or "bottom".
+#'   Default is top.
 #' @param ... Other arguments (see Examples).
 #' @return A character vector of the table source code.
 #' @seealso Other R packages such as \pkg{huxtable}, \pkg{xtable},
@@ -96,7 +98,7 @@
 #' kables(list(kable(d1, align = 'l'), kable(d2)), caption = 'A tale of two tables')
 kable = function(
   x, format, digits = getOption('digits'), row.names = NA, col.names = NA,
-  align, caption = NULL, label = NULL, format.args = list(), escape = TRUE, ...
+  align, caption = NULL, label = NULL, format.args = list(), escape = TRUE, caption_position = NULL, ...
 ) {
 
   format = kable_format(format)
@@ -114,7 +116,7 @@ kable = function(
     return(kables(res, format, caption, label))
   }
 
-  caption = kable_caption(label, caption, format)
+  caption = kable_caption(label, caption, format, caption_position)
 
   if (!is.matrix(x)) x = as.data.frame(x)
   if (identical(col.names, NA)) col.names = colnames(x)
@@ -151,17 +153,20 @@ kable = function(
   attr(x, 'align') = align
   res = do.call(
     paste('kable', format, sep = '_'),
-    list(x = x, caption = caption, escape = escape, ...)
+    list(x = x, caption = caption, escape = escape,
+         caption_position = caption_position,
+         ...)
   )
   structure(res, format = format, class = 'knitr_kable')
 }
 
-kable_caption = function(label, caption, format) {
+kable_caption = function(label, caption, format, caption_position) {
   # create a label for bookdown if applicable
   if (is.null(label)) label = opts_current$get('label')
   if (!is.null(caption) && !is.na(caption)) caption = paste0(
     create_label('tab:', label, latex = (format == 'latex')), caption
   )
+  # need to add rule for `caption_position` here
   caption
 }
 
@@ -192,7 +197,7 @@ kable_format_latex = function(format) {
 
 #' @rdname kable
 #' @export
-kables = function(x, format, caption = NULL, label = NULL) {
+kables = function(x, format, caption = NULL, label = NULL, caption_position = NULL) {
   format = kable_format(format)
   format = kable_format_latex(format)
   caption = kable_caption(label, caption, format)
@@ -201,7 +206,7 @@ kables = function(x, format, caption = NULL, label = NULL) {
   if (!inherits(x, 'list')) stop("'x' must be a list (of kable() values)")
   res = unlist(lapply(x, one_string))
   res = if (format == 'latex') {
-    kable_latex_caption(res, caption)
+    kable_latex_caption(res, caption, caption_position)
   } else if (format == 'html' || (format == 'pipe' && is_html_output())) kable_html(
     matrix(paste0('\n\n', res, '\n\n'), 1), caption = caption, escape = FALSE,
     table.attr = 'class="kable_wrapper"'
@@ -318,10 +323,17 @@ kable_latex = function(
   ), collapse = '')
 }
 
-kable_latex_caption = function(x, caption) {
+kable_latex_caption = function(x, caption, caption_position) {
+  if (caption_position == "top" | is.null(caption_position)) {
   paste(c(
     '\\begin{table}\n', sprintf('\\caption{%s}\n', caption), x, '\n\\end{table}'
   ), collapse = '')
+  }
+  if (caption_position == "bottom") {
+    paste(c(
+      '\\begin{table}\n', x, sprintf('\\caption{%s}\n', caption), '\n\\end{table}'
+    ), collapse = '')
+  }
 }
 
 kable_html = function(x, table.attr = '', caption = NULL, escape = TRUE, ...) {
